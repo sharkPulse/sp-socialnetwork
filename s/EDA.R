@@ -33,7 +33,7 @@ print("Calculating Distance to Coast and Aquariums...")
 # source("./s/EDA_aqua_inland.R") # takes a long time, need to insert into db
 # save(alldat3, file = "./data/raw/inat_alldat3_20260322.RData")
 
-if (c("iNaturalist", "GBIF") %in% selected_sources) {
+if ("iNaturalist" %in% selected_sources) {
 alldat$aquarium = FALSE
 
 # 1. Tag every row _and_ keep that tag through filtering
