@@ -9,6 +9,71 @@ suppressPackageStartupMessages({
 })
 
 # --- helpers -------------------------------------------------------------
+rate_linear_per_year <- function(fit, stable_thresh = 5) {
+  cf <- coef(fit)
+  vn <- names(cf)
+  
+  time_term <- c("year_cont_num", "year_std", "year_observed")
+  time_term <- time_term[time_term %in% vn][1]
+  
+  if (is.na(time_term)) {
+    stop("Could not find a linear year term in the model.")
+  }
+  
+  beta <- cf[[time_term]]
+  V    <- vcov(fit)[time_term, time_term]
+  se   <- sqrt(V)
+  
+  change_per_year <- exp(beta) - 1
+  lo              <- exp(beta - 1.96 * se) - 1
+  hi              <- exp(beta + 1.96 * se) - 1
+  
+  pct <- 100 * change_per_year
+  ci  <- 100 * c(lo, hi)
+  
+  direction <- dplyr::case_when(
+    pct >  stable_thresh ~ "growing",
+    pct < -stable_thresh ~ "declining",
+    TRUE                 ~ "stable"
+  )
+  
+  symbol <- dplyr::case_when(
+    direction == "growing"   ~ "\u2191",   # ↑
+    direction == "declining" ~ "\u2193",   # ↓
+    TRUE                     ~ "\u2248"    # ≈
+  )
+  
+  symbol_color <- dplyr::case_when(
+    direction == "growing"   ~ "#2E8B57",
+    direction == "declining" ~ "#C0392B",
+    TRUE                     ~ "black"
+  )
+  
+  list(
+    term         = time_term,
+    pct_per_year = pct,
+    ci95         = ci,
+    direction    = direction,
+    symbol       = symbol,
+    symbol_color = symbol_color
+  )
+}
+
+make_trend_annotation <- function(fit, x_range, y_ceiling, stable_thresh = 5, x_pos = 0.90) {
+  roc <- rate_linear_per_year(fit, stable_thresh = stable_thresh)
+  
+  label_txt <- sprintf("%.1f%%/yr", roc$pct_per_year)
+  
+  tibble::tibble(
+    x      = min(x_range) + x_pos * diff(range(x_range)),
+    y_sym  = y_ceiling * 0.95,
+    y_lab  = y_ceiling * 0.79,
+    symbol = roc$symbol,
+    color  = roc$symbol_color,
+    label  = label_txt,
+    dir    = roc$direction
+  )
+}
 
 is_nb_family <- function(fit) {
   isTRUE(grepl("Negative Binomial", fit$family$family))
@@ -136,7 +201,8 @@ fit_shark_trend2 <- function(
     effort_fixed        = 1000,
     ci_level            = 0.95,
     clip_ci_q           = 0.95,
-    x_ticks_n           = 6
+    x_ticks_n           = 6,
+    roc_pos = 0.90
 ) {
   effort_offset_col <- match.arg(effort_offset_col)
   weight_strategy   <- match.arg(weight_strategy)
@@ -245,6 +311,7 @@ fit_shark_trend2 <- function(
   ))
 
   df$year_factor <- factor(df$year_observed)
+  
   form_points <- as.formula(paste(
     "shark_observations ~ s(year_factor, bs='re')",
     if (!is.null(season_term)) paste("+", season_term) else "",
@@ -262,11 +329,18 @@ fit_shark_trend2 <- function(
   fit_curve  <- mgcv::gam(form_curve,  family = fam_nb, data = df, method = "REML", weights = df$w)
   fit_points <- mgcv::gam(form_points, family = fam_nb, data = df, method = "REML", weights = df$w)
 
-  # fit_curve <- MASS::glm.nb(shark_observations ~ year_cont_num + month_sin + month_cos +
-  #                             offset(log(effort_offset)), data = df, weights = df$w)
-  # fit_points <- MASS::glm.nb(shark_observations ~ year_factor + month_sin + month_cos +
-  #                             offset(log(effort_offset)), data = df, weights = df$w)
+  # fit_curve <- MASS::glm.nb(
+  #   form_curve,
+  #   data = df,
+  #   weights = df$w
+  # )
   # 
+  # fit_points <- MASS::glm.nb(
+  #   form_points,
+  #   data = df,
+  #   weights = df$w
+  # )
+
   
   years_pred <- sort(unique(df$year_observed))
   
@@ -397,6 +471,14 @@ fit_shark_trend2 <- function(
   }
   y_unit <- if (effort_offset_col == "total_users") "Users" else "Posts"
   
+  trend_anno <- make_trend_annotation(
+    fit = fit_curve,
+    x_range = pred_ts_plot$year_observed,
+    y_ceiling = y_ceiling,
+    stable_thresh = 5,
+    x_pos = roc_pos
+  )
+  
   p <- ggplot(pred_ts_plot, aes(x = year_observed, y = spue_hat)) +
     geom_ribbon(aes(ymin = lo_plot, ymax = hi_plot), fill = "#74AC00", alpha = 0.15) +
     geom_line(linewidth = 1, color = "#74AC00") +
@@ -407,6 +489,22 @@ fit_shark_trend2 <- function(
       aes(x = year_observed, xend = year_observed, y = y_ceiling * 0.97, yend = y_ceiling),
       linewidth = 0.5, arrow = grid::arrow(length = grid::unit(5, "pt"), type = "closed")
     ) +
+    geom_text(
+      data = trend_anno,
+      aes(x = x, y = y_sym, label = symbol),
+      inherit.aes = FALSE,
+      color = trend_anno$color,
+      size = 15,
+      fontface = "bold"
+    ) +
+    geom_label(
+      data = trend_anno,
+      aes(x = x, y = y_lab, label = label),
+      inherit.aes = FALSE,
+      size = 3.5,
+      label.size = 0.2,
+      fill = "white"
+    ) +
     labs(x = "Year", y = sprintf("Sightings per %s %s", format(effort_fixed, big.mark=","), y_unit)) +
     scale_x_continuous(
       breaks = scales::breaks_extended(n = x_ticks_n),
@@ -415,9 +513,11 @@ fit_shark_trend2 <- function(
     ) +
     coord_cartesian(ylim = c(0, y_ceiling)) +
     theme_classic(base_size = 14) +
-    theme(panel.grid = element_blank(),
-          axis.line  = element_line(color = "black"),
-          axis.ticks = element_line(color = "black"))
+    theme(
+      panel.grid = element_blank(),
+      axis.line  = element_line(color = "black"),
+      axis.ticks = element_line(color = "black")
+    )
   
   # metrics --------------------------------------------------------------
   metrics <- tibble::tibble(
@@ -446,15 +546,19 @@ fit_shark_trend2 <- function(
   )
 }
 
-# Assume you already built combined_date from the prep function
-# str(combined_date)
-
-# 1) Basic: posts as offset, start at first observation, harmonic season, spline trend
-# yrs <- seq(2007, 2024)
+########################################################################
+# combined_date = combined_date %>%
+#   group_by(year_observed) %>%
+#   filter(sum(shark_observations) > 0) %>%
+#   ungroup()
 
 min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")),
                 na.rm = TRUE)
-yrs <- seq(min_year, 2026)
+min_year
+max_year <- max(as.numeric(format(combined_date$month[combined_date$shark_observations > 0 & combined_date$year_observed < 2026], "%Y")),
+                na.rm = TRUE)
+max_year
+yrs <- seq(min_year, max_year)
 yrs
 m1 <- fit_shark_trend2(
   combined_date,
@@ -465,7 +569,7 @@ m1 <- fit_shark_trend2(
   weight_strategy     = "none",
   season_type         = "harmonic",
   trend_type          = "linear",
-  trend_scale         = "calendar",             # or "std"
+  trend_scale         = "std",             # or "std"
   k_year              = 12,
   average_months      = TRUE,
   effort_fixed        = 1000,

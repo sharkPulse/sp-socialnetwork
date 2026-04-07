@@ -173,15 +173,16 @@ inat_case_study_plots <- function(
     buffer_km = 0,                                  # ← NEW: shoreline/nearshore padding for region_sf
     bounds = NULL,
     species_cols = 3,                 # << how many panels per row
-    alldata_path = "./data/raw/alldat_meta_20250812.csv",
-    effort_path = "./data/raw/inat/inat_effort_20250825.csv",
+    alldata_path = "../../data/processed/inat_20260322.csv",
+    effort_path = "../../data/processed/inat_effort_20260310.csv",
     bin = 0.5,
+    roc_sym_pos = 0.90,
     inset_xy = c(0.60, 0.63),
     inset_wh = c(0.36, 0.34),
     legend_position = "bottom",
     pad = 0.15,            # only used if bounds is NULL
     center = NULL, width_deg = NULL, height_deg = NULL,  # optional alternate bounding mode
-    ill_dir = "./figures/shark_ill",              
+    ill_dir = "../../figures/shark_ill",              
     ill_xy  = c(0.73, 0.73),            # <- NEW: lower-left corner (npc: 0..1)
     ill_wh  = c(0.24, 0.24)             # <- NEW: width/height (npc)
     ) {
@@ -255,26 +256,41 @@ inat_case_study_plots <- function(
     p_line <- NULL
     map_df_grid <- NULL
     
-    min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")), 
+    min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")),
                     na.rm = TRUE)
-    yrs <- seq(min_year, 2025)
-    m1 <- fit_shark_trend2(
-      combined_date,
-      effort_offset_col   = "total_observations",   # or "total_users"
-      start_when_first_obs= FALSE,
-      # drop_years = c(2025),
-      years_keep          = yrs,
-      weight_strategy     = "none",
-      season_type         = "harmonic",
-      trend_type          = "linear", 
-      trend_scale         = "calendar",             # or "std"
-      k_year              = 12,
-      average_months      = TRUE,
-      effort_fixed        = 1000,
-      clip_ci_q           = 0.975,
-      x_ticks_n           = 4
-    )
+    max_year <- max(as.numeric(format(combined_date$month[combined_date$shark_observations > 0 & combined_date$year_observed < 2026], "%Y")),
+                    na.rm = TRUE)
+    yrs <- seq(min_year, max_year)
+    
+    if (region_name == "Maldives" & (sp == "Carcharhinus melanopterus" | 
+                                     sp == "Triaenodon obesus")) {
+      yrs <- seq(2010, max_year)
+    }
+    
+    # m1 <- fit_shark_trend2(
+    #   combined_date,
+    #   effort_offset_col   = "total_observations",   # or "total_users"
+    #   start_when_first_obs= FALSE,
+    #   # drop_years = c(2025),
+    #   years_keep          = yrs,
+    #   weight_strategy     = "none",
+    #   season_type         = "harmonic",
+    #   trend_type          = "linear",
+    #   trend_scale         = "calendar",             # or "std"
+    #   k_year              = 12,
+    #   average_months      = TRUE,
+    #   effort_fixed        = 1000,
+    #   clip_ci_q           = 0.95,
+    #   x_ticks_n           = 4,
+    #   roc_pos = roc_sym_pos
+    # )
 
+    # yrs <- get_valid_year_sequence(combined_date)
+    m1 <- run_glm_pipeline(clip_ci_q = 0.975, sym_pos = roc_sym_pos,
+                           combined_date %>%
+                             filter(year_observed %in% yrs)
+    )
+    
       p_line <- m1$plot
       
       if (!is.null(p_line)) {
@@ -469,8 +485,9 @@ inat_case_study_plots <- function(
 }
 
 #################################################################################
-source("./modules/inat/inat_data.R")
-source("./modules/inat/inat_pline_final.R")
+source("./inat_data.R")
+# source("./inat_pline_final.R")
+source("./inat_pline_GAM.R")
 
 hawaii_species_vec <- c(
   "Galeocerdo cuvier",
@@ -481,7 +498,9 @@ hawaii_species_vec <- c(
   # "Carcharhinus plumbeus",
   "Carcharhinus galapagensis",
   "Carcharhinus melanopterus",
-  "Carcharhinus limbatus"
+  "Mobula alfredi",
+  "Aetobatus ocellatus"
+  # "Carcharhinus limbatus"
 )
 
 # Example 1 — Hawaii, auto-bounds with padding knob
@@ -493,14 +512,15 @@ p_hawaii <- inat_case_study_plots(
   buffer_km     = 25,                          # include nearshore waters
   pad           = 0.2,                 # widen view a bit
   bin           = 0.5,
+  roc_sym_pos = 0.865,
   bounds = c(-160, -154, 18.5, 23.5),
   ill_xy  = c(0.52, 0.52),            # species illustrations <- lower-left corner (npc: 0..1)
   ill_wh  = c(0.5, 0.5)             # <- width/height (npc)
 )
-p_hawaii
+# p_hawaii
 
-ggsave("./figures/Hawaii_inat_plots.pdf", plot = p_hawaii, width = 19, height = 11)
-ggsave("./figures/Hawaii_inat_plots.png", plot = p_hawaii, width = 19, height = 11)
+ggsave("../../figures/Hawaii_inat_plots.pdf", plot = p_hawaii, width = 19, height = 11)
+ggsave("../../figures/Hawaii_inat_plots.png", plot = p_hawaii, width = 20, height = 11.5)
 
 ################################################################################
 
@@ -532,39 +552,80 @@ p_bahamas <- inat_case_study_plots(
   buffer_km     = 25,                          # include nearshore waters
   pad           = 0.2,                 # widen view a bit
   bin           = 0.5,
+  roc_sym_pos = 0.2,
   bounds = c(-82.0365, -67.7489, 17.7121, 29.3775),
   ill_xy  = c(0.52, 0.52),            # species illustrations <- lower-left corner (npc: 0..1)
   ill_wh  = c(0.5, 0.5)             # <- width/height (npc)
 )
 p_bahamas
 
-ggsave("./figures/Bahamas_inat_plots.pdf", plot = p_bahamas, width = 19, height = 11)
-ggsave("./figures/Bahamas_inat_plots.png", plot = p_bahamas, width = 19, height = 11)
+ggsave("../../figures/Bahamas_inat_plots.pdf", plot = p_bahamas, width = 19, height = 11)
+ggsave("../../figures/Bahamas_inat_plots.png", plot = p_bahamas, width = 20, height = 11.5)
 
 ################################################################################
 
-galapagos_species_vec <- c(
-  "Heterodontus quoyi",
-  "Sphyrna lewini",
+# Triaenodon obesus
+# Carcharhinus amblyrhynchos
+# Carcharhinus melanopterus
+# Nebrius ferrugineus
+# Rhincodon typus
+# Aetobatus ocellatus
+# Mobula alfredi
+maldives_species_vec <- c(
   "Triaenodon obesus",
-  "Carcharhinus galapagensis",
-  "Carcharhinus limbatus"
+  "Carcharhinus amblyrhynchos",
+  "Carcharhinus melanopterus",
+  "Nebrius ferrugineus",
+  "Rhincodon typus",
+  # "Negaprion acutidens",
+  "Aetobatus ocellatus",
+  "Mobula alfredi"
+  # "Taeniurops meyeni"
 )
 
 # Example 2 — Bahamas, auto-bounds with padding knob
-p_galap <- inat_case_study_plots(
-  species_vec   = galapagos_species_vec,
-  region_name   = "Galapagos",
-  region_level  = "admin1",
-  country       = "Ecuador",
-  buffer_km     = 25,
-  pad           = 0,                 # widen view a bit
+p_maldives <- inat_case_study_plots(
+  species_vec   = maldives_species_vec,
+  region_name   = "Maldives",
+  region_level  = "country",
+  buffer_km     = 25,                          # include nearshore waters
+  pad           = 0.2,                 # widen view a bit
   bin           = 0.5,
-  bounds = c(-93.114611, -87.259070, -2.803904, 2.254211),
-  ill_xy  = c(0.49, 0.49),            # species illustrations <- lower-left corner (npc: 0..1)
+  roc_sym_pos = 0.9,
+  bounds = c(67.284960, 84.624, -2.0242, 11.9),
+  ill_xy  = c(0.54, 0.0),            # species illustrations <- lower-left corner (npc: 0..1)
   ill_wh  = c(0.5, 0.5)             # <- width/height (npc)
 )
-p_galap
+# p_maldives
 
-ggsave("./figures/galap_inat_plots.pdf", plot = p_galap, width = 19, height = 9)
-ggsave("./figures/galap_inat_plots.png", plot = p_galap, width = 19, height = 9)
+ggsave("../../figures/Maldives_inat_plots.pdf", plot = p_maldives, width = 19, height = 11)
+ggsave("../../figures/Maldives_inat_plots.png", plot = p_maldives, width = 20, height = 11)
+
+
+################################################################################
+
+# galapagos_species_vec <- c(
+#   "Heterodontus quoyi",
+#   "Sphyrna lewini",
+#   "Triaenodon obesus",
+#   "Carcharhinus galapagensis",
+#   "Carcharhinus limbatus"
+# )
+# 
+# # Example 2 — Bahamas, auto-bounds with padding knob
+# p_galap <- inat_case_study_plots(
+#   species_vec   = galapagos_species_vec,
+#   region_name   = "Galapagos",
+#   region_level  = "admin1",
+#   country       = "Ecuador",
+#   buffer_km     = 25,
+#   pad           = 0,                 # widen view a bit
+#   bin           = 0.5,
+#   bounds = c(-93.114611, -87.259070, -2.803904, 2.254211),
+#   ill_xy  = c(0.49, 0.49),            # species illustrations <- lower-left corner (npc: 0..1)
+#   ill_wh  = c(0.5, 0.5)             # <- width/height (npc)
+# )
+# p_galap
+# 
+# ggsave("./figures/galap_inat_plots.pdf", plot = p_galap, width = 19, height = 9)
+# ggsave("./figures/galap_inat_plots.png", plot = p_galap, width = 19, height = 9)

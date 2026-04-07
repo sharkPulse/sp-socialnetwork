@@ -1,20 +1,22 @@
 library(readr)
-source("./modules/inat/inat_data.R")
+source("./inat_data.R")
 
 # Load your inputs
-alldata <- read.csv("./data/raw/inat/alldat_meta_20260310.csv")
+alldata <- read.csv("../../data/processed/inat_20260322.csv")
+effort <- read.csv("../../data/processed/inat_effort_20260310.csv")
 # effort  <- read.csv("./data/raw/inat/inat_effort_20260310.csv")
-con <- sharkPulseR::connectPelagic("spr", "spr_pass")
-effort <- sharkPulseR::selectData(con, "select * from inat_effort;")
-DBI::dbDisconnect(con)
+# con <- sharkPulseR::connectPelagic("spr", "spr_pass")
+# effort <- sharkPulseR::selectData(con, "select * from inat_effort;")
+# DBI::dbDisconnect(con)
+# 
+# effort = effort %>%
+#   filter(!is.na(latitude) | !is.na(longitude))
+# 
+# effort = sharkPulseR::removeInlands3(effort, -10) %>%
+#   filter(!inland)
+# 
+# write.csv(effort, "../../data/processed/inat_effort_20260310.csv", row.names = FALSE)
 
-effort = effort %>%
-  filter(!is.na(latitude) | !is.na(longitude))
-
-effort = sharkPulseR::removeInlands3(effort, -10) %>%
-  filter(!inland)
-
-write.csv(effort, "./data/raw/inat/inat_effort_20260310.csv", row.names = FALSE)
 # stop()
 # Hawaii
 lat_bounds <- c(18.5, 23.5)
@@ -27,13 +29,17 @@ lon_bounds <- c(-82.0365, -67.7489)
 # Example 2: Maldives
 lat_bounds = c(-2.0242, 10.754)
 lon_bounds = c(67.284960, 84.624)
-table(alldat_mald$species_name)
 
-alldata = alldata %>%
-  mutate(sd_is_shark == TRUE,
-         cs_is_shark == TRUE,
-         is_wild = if_else(!aquarium | !inland, TRUE, FALSE),
-         is_validated == TRUE)
+# alldata = alldata %>%
+#   mutate(sd_is_shark == TRUE,
+#          cs_is_shark == TRUE,
+#          is_wild = if_else(!aquarium | !inland, TRUE, FALSE),
+#          is_validated == TRUE)
+
+alldat_loc = alldata %>%
+  filter(latitude > lat_bounds[1] & latitude < lat_bounds[2]) %>%
+  filter(longitude > lon_bounds[1] & longitude < lon_bounds[2])
+table(alldat_loc$species_name)
 
 res_single <- prep_shark_obs(
   data        = alldata,
@@ -41,7 +47,7 @@ res_single <- prep_shark_obs(
   lat_bounds  = lat_bounds,
   lon_bounds  = lon_bounds,
   species_mode= "single",
-  species     = "Carcharhinus melanopterus",   # change as needed
+  species     = "Aetobatus ocellatus",   # change as needed
   source_filter = "iNaturalist",
   bin_deg     = 0.5
 )
