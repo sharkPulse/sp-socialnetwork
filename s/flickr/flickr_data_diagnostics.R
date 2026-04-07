@@ -1,16 +1,12 @@
 library(readr)
+source("./flickr_data.R")
 
 # Load your inputs
-# alldata <- read.csv("./data/raw/alldat_meta_20250812.csv")
-# alldata <- read.csv("./data/raw/alldat_meta_20250826.csv")
-alldata <- read.csv("./data/processed/alldat_combined_20250827.csv")
+
+alldata <- read.csv("../../data/processed/flickr_20250827.csv")
 flickr_effort = subset(alldata, source_type == "Flickr" & has_spatiotemporal 
                        & !inland & !sd_is_shark & !cs_is_shark & is.na(species_name))
-# effort  <- read_csv("./data/raw/inat/inat_effort_20250825.csv")
-# con <- sharkPulseR::connectPelagic("spr", "spr_pass")
-# effort <- sharkPulseR::selectData(con, "select * from inat_effort;")
-# DBI::dbDisconnect(con)
-# effort = sharkPulseR::removeInlands3(effort, -10)
+
 
 # Hawaii
 lat_bounds <- c(18.5, 23.5)
@@ -20,6 +16,15 @@ lon_bounds <- c(-160, -154)
 lat_bounds <- c(17.7121, 29.3775)
 lon_bounds <- c(-82.0365, -67.7489)
  
+# Example 2: Maldives
+lat_bounds = c(-2.0242, 10.754)
+lon_bounds = c(67.284960, 84.624)
+
+alldat_loc = alldata %>%
+  filter(latitude > lat_bounds[1] & latitude < lat_bounds[2]) %>%
+  filter(longitude > lon_bounds[1] & longitude < lon_bounds[2])
+table(alldat_loc$sd_species)
+
 res_single <- prep_shark_obs(
   data        = alldata,
   effort      = flickr_effort,
@@ -28,7 +33,7 @@ res_single <- prep_shark_obs(
   validated_col = "is_wild",
   species_col = "sd_species",
   species_mode= "single",
-  species     = "Carcharhinus galapagensis",   # change as needed
+  species     = "Orectolobus halei",   # change as needed
   source_filter = "Flickr",
   bin_deg     = 0.5
 )

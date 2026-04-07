@@ -599,8 +599,15 @@ p_maldives <- inat_case_study_plots(
 # p_maldives
 
 ggsave("../../figures/Maldives_inat_plots.pdf", plot = p_maldives, width = 19, height = 11)
-ggsave("../../figures/Maldives_inat_plots.png", plot = p_maldives, width = 20, height = 11)
 
+ggsave(
+  "../../figures/Maldives_inat_plots.png",
+  plot = p_maldives,
+  width = 20,
+  height = 11.5,
+  dpi = 600,
+  device = ragg::agg_png
+)
 
 ################################################################################
 

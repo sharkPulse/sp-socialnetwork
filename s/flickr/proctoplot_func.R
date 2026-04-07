@@ -189,7 +189,7 @@ flickr_case_study_plots <- function(
     buffer_km = 0,                                  # ← NEW: shoreline/nearshore padding for region_sf
     bounds = NULL,
     species_cols = 3,                 # << how many panels per row
-    alldata_path = "./data/raw/alldat_meta_20250812.csv",
+    alldata_path = "../../data/processed/flickr_20250827.csv",
     effort_path = NA,
     bin = 0.5,
     inset_xy = c(0.60, 0.63),
@@ -197,7 +197,7 @@ flickr_case_study_plots <- function(
     legend_position = "bottom",
     pad = 0.15,            # only used if bounds is NULL
     center = NULL, width_deg = NULL, height_deg = NULL,  # optional alternate bounding mode
-    ill_dir = "./figures/shark_ill",              
+    ill_dir = "../../figures/shark_ill",              
     ill_xy  = c(0.73, 0.73),            # <- NEW: lower-left corner (npc: 0..1)
     ill_wh  = c(0.24, 0.24)             # <- NEW: width/height (npc)
     ) {
@@ -276,28 +276,37 @@ flickr_case_study_plots <- function(
     eff_tousers = c("Sphyrna lewini", "Prionace glauca", "Galeocerdo cuvier",
                     "Carcharhinus galapagensis")
     
-    # Extract the year for rows with >0 observations
-    min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")), 
-                    na.rm = TRUE)
-    # Create the yearly sequence
-    yrs <- seq(min_year, 2024)
-    m1 <- fit_shark_trend2(
-      combined_date,
-      effort_offset_col   = if (sp %in% eff_tousers) "total_users" else "total_observations",   # or "total_users"
-      start_when_first_obs= FALSE,
-      # drop_years = c(2025),
-      years_keep          = yrs,
-      weight_strategy     = "none",
-      season_type         = "harmonic",
-      trend_type          = "linear", 
-      trend_scale         = "calendar",             # or "std"
-      k_year              = 12,
-      average_months      = TRUE,
-      effort_fixed        = 1000,
-      clip_ci_q           = 0.975,
-      x_ticks_n           = 4
-    )
 
+    # m1 <- fit_shark_trend2(
+    #   combined_date,
+    #   effort_offset_col   = if (sp %in% eff_tousers) "total_users" else "total_observations",   # or "total_users"
+    #   start_when_first_obs= FALSE,
+    #   # drop_years = c(2025),
+    #   years_keep          = yrs,
+    #   weight_strategy     = "none",
+    #   season_type         = "harmonic",
+    #   trend_type          = "linear", 
+    #   trend_scale         = "calendar",             # or "std"
+    #   k_year              = 12,
+    #   average_months      = TRUE,
+    #   effort_fixed        = 1000,
+    #   clip_ci_q           = 0.975,
+    #   x_ticks_n           = 4
+    # )
+    min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")),
+                    na.rm = TRUE)
+    min_year
+    max_year <- max(as.numeric(format(combined_date$month[combined_date$shark_observations > 0 & combined_date$year_observed < 2026], "%Y")),
+                    na.rm = TRUE)
+    max_year
+    yrs <- seq(min_year, max_year)
+    yrs
+    
+    m1 <- run_glm_pipeline(clip_ci_q = 0.975,
+                           combined_date %>%
+                             filter(year_observed %in% yrs)
+    )
+    
       p_line <- m1$plot
       
       if (!is.null(p_line)) {
@@ -508,8 +517,9 @@ flickr_case_study_plots <- function(
 }
 
 #################################################################################
-source("./modules/flickr/flickr_data.R")
-source("./modules/flickr/flickr_pline_final.R")
+source("./flickr_data.R")
+# source("./modules/flickr/flickr_pline_final.R")
+source ("./flickr_pline_GAM.R")
 
 hawaii_species_vec <- c(
   "Galeocerdo cuvier",
@@ -530,7 +540,6 @@ p_hawaii <- flickr_case_study_plots(
   region_name   = "Hawaii",
   region_level  = "state",
   country       = "United States of America",  
-  alldata_path = "./data/raw/alldat_meta_20250826.csv",
   buffer_km     = 25,                          # include nearshore waters
   pad           = 0.2,                 # widen view a bit
   bin           = 0.5,
@@ -541,8 +550,14 @@ p_hawaii <- flickr_case_study_plots(
 p_hawaii
 
 ggsave("./figures/Hawaii_flickr_plots.pdf", plot = p_hawaii, width = 19, height = 11)
-ggsave("./figures/Hawaii_flickr_plots.png", plot = p_hawaii, width = 19, height = 11)
-
+ggsave(
+  "../../figures/Hawaii_flickr_plots.png",
+  plot = p_hawaii,
+  width = 20,
+  height = 11.5,
+  dpi = 600,
+  device = ragg::agg_png
+)
 ################################################################################
 
 
@@ -570,7 +585,6 @@ p_bahamas <- flickr_case_study_plots(
   species_vec   = bahamas_species_vec,
   region_name   = "Bahamas",
   region_level  = "country",
-  alldata_path = "./data/raw/alldat_meta_20250826.csv",
   buffer_km     = 25,                          # include nearshore waters
   pad           = 0.2,                 # widen view a bit
   bin           = 0.5,
@@ -581,8 +595,49 @@ p_bahamas <- flickr_case_study_plots(
 p_bahamas
 
 ggsave("./figures/Bahamas_flickr_plots.pdf", plot = p_bahamas, width = 19, height = 11)
-ggsave("./figures/Bahamas_flickr_plots.png", plot = p_bahamas, width = 19, height = 11)
-
+ggsave(
+  "../../figures/Bahamas_flickr_plots.png",
+  plot = p_bahamas,
+  width = 20,
+  height = 11.5,
+  dpi = 600,
+  device = ragg::agg_png
+)
 ################################################################################
+
+maldives_species_vec <- c(
+  "Sphyrna lewini",
+  "Triaenodon obesus",
+  "Heterodontus francisci",
+  "Ginglymostoma cirratum",
+  "Carcharhinus melanopterus",
+  "Triakis semifasciata",
+  "Rhincodon typus",
+  "Carcharhinus amblyrhynchos"
+)
+
+# Example 2 — Bahamas, auto-bounds with padding knob
+p_maldives <- flickr_case_study_plots(
+  species_vec   = maldives_species_vec,
+  region_name   = "Maldives",
+  region_level  = "country",
+  buffer_km     = 25,                          # include nearshore waters
+  pad           = 0.2,                 # widen view a bit
+  bin           = 0.5,
+  bounds = c(67.284960, 84.624, -2.0242, 11.9),
+  ill_xy  = c(0.54, 0.0),            # species illustrations <- lower-left corner (npc: 0..1)
+  ill_wh  = c(0.5, 0.5)             # <- width/height (npc)
+)
+# p_maldives
+
+ggsave("../../figures/Maldives_flickr_plots.pdf", plot = p_maldives, width = 19, height = 11)
+ggsave(
+  "../../figures/Maldives_flickr_plots.png",
+  plot = p_maldives,
+  width = 20,
+  height = 11.5,
+  dpi = 600,
+  device = ragg::agg_png
+)
 
 
