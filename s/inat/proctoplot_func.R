@@ -256,15 +256,27 @@ inat_case_study_plots <- function(
     p_line <- NULL
     map_df_grid <- NULL
     
-    min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")),
-                    na.rm = TRUE)
-    max_year <- max(as.numeric(format(combined_date$month[combined_date$shark_observations > 0 & combined_date$year_observed < 2026], "%Y")),
-                    na.rm = TRUE)
+    combined_date <- combined_date %>%
+      group_by(year_observed) %>%
+      filter(sum(shark_observations) >= 1) %>%
+      ungroup()
+    
+    years <- as.numeric(format(combined_date$month, "%Y"))
+    
+    valid <- combined_date$shark_observations > 0 & combined_date$year_observed < 2026
+    
+    min_year <- min(years[valid], na.rm = TRUE)
+    max_year <- max(years[valid], na.rm = TRUE)
+    
     yrs <- seq(min_year, max_year)
     
     if (region_name == "Maldives" & (sp == "Carcharhinus melanopterus" | 
                                      sp == "Triaenodon obesus")) {
       yrs <- seq(2010, max_year)
+    }
+    
+    if (region_name == "Bahamas" & sp == "Galeocerdo cuvier") {
+      yrs <- seq(2002, max_year)
     }
     
     # m1 <- fit_shark_trend2(
@@ -286,7 +298,7 @@ inat_case_study_plots <- function(
     # )
 
     # yrs <- get_valid_year_sequence(combined_date)
-    m1 <- run_glm_pipeline(clip_ci_q = 0.975, sym_pos = roc_sym_pos,
+    m1 <- run_model_pipeline(clip_ci_q = 0.975, sym_pos = roc_sym_pos,
                            combined_date %>%
                              filter(year_observed %in% yrs)
     )
@@ -519,8 +531,8 @@ p_hawaii <- inat_case_study_plots(
 )
 # p_hawaii
 
-ggsave("../../figures/Hawaii_inat_plots.pdf", plot = p_hawaii, width = 19, height = 11)
-ggsave("../../figures/Hawaii_inat_plots.png", plot = p_hawaii, width = 20, height = 11.5)
+# ggsave("../../figures/Hawaii_inat_plots.pdf", plot = p_hawaii, width = 19, height = 11)
+ggsave("../../figures/Hawaii_inat_plots_ind.png", plot = p_hawaii, width = 20, height = 11.5)
 
 ################################################################################
 
@@ -559,8 +571,8 @@ p_bahamas <- inat_case_study_plots(
 )
 p_bahamas
 
-ggsave("../../figures/Bahamas_inat_plots.pdf", plot = p_bahamas, width = 19, height = 11)
-ggsave("../../figures/Bahamas_inat_plots.png", plot = p_bahamas, width = 20, height = 11.5)
+# ggsave("../../figures/Bahamas_inat_plots.pdf", plot = p_bahamas, width = 19, height = 11)
+ggsave("../../figures/Bahamas_inat_plots_ind.png", plot = p_bahamas, width = 20, height = 11.5)
 
 ################################################################################
 
@@ -598,10 +610,10 @@ p_maldives <- inat_case_study_plots(
 )
 # p_maldives
 
-ggsave("../../figures/Maldives_inat_plots.pdf", plot = p_maldives, width = 19, height = 11)
+# ggsave("../../figures/Maldives_inat_plots.pdf", plot = p_maldives, width = 19, height = 11)
 
 ggsave(
-  "../../figures/Maldives_inat_plots.png",
+  "../../figures/Maldives_inat_plots_ind.png",
   plot = p_maldives,
   width = 20,
   height = 11.5,

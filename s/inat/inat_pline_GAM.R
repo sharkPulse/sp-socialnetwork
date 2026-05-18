@@ -201,7 +201,7 @@ fit_gam_models <- function(df) {
   )
   
   m_points <- mgcv::gam(
-    shark_observations ~ s(year_factor, bs='re') + month_sin + month_cos +
+    shark_observations ~ year_factor + month_sin + month_cos +
       offset(log(effort_offset)),
     family = mgcv::nb(),
     method = "REML",
@@ -370,6 +370,11 @@ plot_trends <- function(pred_curve, pred_points, clip_ci_q = 0.975, roc_pos = 0.
     x_pos = roc_pos
   )
   
+  min_year <- min(pred_curve_plot$year_observed, na.rm = TRUE)
+  max_year <- max(pred_curve_plot$year_observed, na.rm = TRUE)
+  
+  step <- ceiling((max_year - min_year) / 4)  # max ~5 ticks
+  
   ggplot(pred_curve_plot, aes(x = year_observed, y = spue_plot)) +
     
     geom_ribbon(
@@ -424,7 +429,9 @@ plot_trends <- function(pred_curve, pred_points, clip_ci_q = 0.975, roc_pos = 0.
       labels = label_number(big.mark = ","),
       oob = scales::squish
     ) +
-    
+    scale_x_continuous(
+      breaks = seq(min_year, max_year, by = step)
+    ) +
     labs(
       x = "Year",
       y = "Sightings per 1,000 posts",
@@ -438,7 +445,7 @@ plot_trends <- function(pred_curve, pred_points, clip_ci_q = 0.975, roc_pos = 0.
 # 5. WRAPPER FUNCTION
 #--------------------------------------------------
 
-run_glm_pipeline <- function(combined_date, clip_ci_q = 0.975, sym_pos = 0.9) {
+run_model_pipeline <- function(combined_date, clip_ci_q = 0.975, sym_pos = 0.9) {
   
   df <- prep_model_data(combined_date)
   
@@ -461,19 +468,33 @@ run_glm_pipeline <- function(combined_date, clip_ci_q = 0.975, sym_pos = 0.9) {
 ################################################################################
 # yrs <- get_valid_year_sequence(combined_date) # allows max 2 consecutive zero-obs years
 
-min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")),
-                na.rm = TRUE)
-min_year
-max_year <- max(as.numeric(format(combined_date$month[combined_date$shark_observations > 0 & combined_date$year_observed < 2026], "%Y")),
-                na.rm = TRUE)
-max_year
-yrs <- seq(2008, max_year)
+combined_date <- combined_date %>%
+  group_by(year_observed) %>%
+  filter(sum(shark_observations) >= 1) %>%
+  ungroup()
+
+years <- as.numeric(format(combined_date$month, "%Y"))
+
+valid <- combined_date$shark_observations > 0 & combined_date$year_observed < 2026
+
+min_year <- min(years[valid], na.rm = TRUE)
+max_year <- max(years[valid], na.rm = TRUE)
+
+yrs <- seq(2018, max_year)
 yrs
 
-m1 <- run_glm_pipeline(clip_ci_q = 0.975, sym_pos = 0.9,
+m1 <- run_model_pipeline(clip_ci_q = 0.975, sym_pos = 0.9,
   combined_date %>%
+    filter(!is.na(year_observed)) %>%
     filter(year_observed %in% yrs)
 )
 
 m1$plot
 summary(m1$models$curve); summary(m1$models$points)
+
+df <- m1$preds$curve %>% arrange(year_observed)
+
+delta_spue <- df$spue_hat[nrow(df)] - df$spue_hat[1]
+delta_spue
+
+print(m1$preds$curve, n = Inf)

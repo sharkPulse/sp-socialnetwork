@@ -33,7 +33,7 @@ res_single <- prep_shark_obs(
   validated_col = "is_wild",
   species_col = "sd_species",
   species_mode= "single",
-  species     = "Orectolobus halei",   # change as needed
+  species     = "Sphyrna lewini",   # change as needed
   source_filter = "Flickr",
   bin_deg     = 0.5
 )

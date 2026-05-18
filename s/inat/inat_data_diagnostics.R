@@ -47,7 +47,7 @@ res_single <- prep_shark_obs(
   lat_bounds  = lat_bounds,
   lon_bounds  = lon_bounds,
   species_mode= "single",
-  species     = "Aetobatus ocellatus",   # change as needed
+  species     = "Sphyrna lewini",   # change as needed
   source_filter = "iNaturalist",
   bin_deg     = 0.5
 )

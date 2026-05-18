@@ -201,7 +201,7 @@ fit_gam_models <- function(df) {
   )
   
   m_points <- mgcv::gam(
-    shark_observations ~ s(year_factor, bs='re') + month_sin + month_cos +
+    shark_observations ~ year_factor + month_sin + month_cos +
       offset(log(effort_offset)),
     family = mgcv::nb(),
     method = "REML",
@@ -461,6 +461,11 @@ run_glm_pipeline <- function(combined_date, clip_ci_q = 0.975, sym_pos = 0.9) {
 ################################################################################
 # yrs <- get_valid_year_sequence(combined_date) # allows max 2 consecutive zero-obs years
 
+# combined_date <- combined_date %>%
+#   group_by(year_observed) %>%
+#   filter(sum(shark_observations) >= 1) %>%
+#   ungroup()
+# 
 # min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")),
 #                 na.rm = TRUE)
 # min_year
@@ -477,3 +482,10 @@ run_glm_pipeline <- function(combined_date, clip_ci_q = 0.975, sym_pos = 0.9) {
 # 
 # m1$plot
 # summary(m1$models$curve); summary(m1$models$points)
+# 
+# df <- m1$preds$curve %>% arrange(year_observed)
+# 
+# delta_spue <- df$spue_hat[nrow(df)] - df$spue_hat[1]
+# delta_spue
+# 
+# print(m1$preds$curve, n = Inf)

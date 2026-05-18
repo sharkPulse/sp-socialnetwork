@@ -552,30 +552,37 @@ fit_shark_trend2 <- function(
 #   filter(sum(shark_observations) > 0) %>%
 #   ungroup()
 
-min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")),
-                na.rm = TRUE)
-min_year
-max_year <- max(as.numeric(format(combined_date$month[combined_date$shark_observations > 0 & combined_date$year_observed < 2026], "%Y")),
-                na.rm = TRUE)
-max_year
-yrs <- seq(min_year, max_year)
-yrs
-m1 <- fit_shark_trend2(
-  combined_date,
-  effort_offset_col   = "total_observations",   # or "total_users"
-  start_when_first_obs= FALSE,
-  # drop_years = c(2025),
-  years_keep          = yrs,
-  weight_strategy     = "none",
-  season_type         = "harmonic",
-  trend_type          = "linear",
-  trend_scale         = "std",             # or "std"
-  k_year              = 12,
-  average_months      = TRUE,
-  effort_fixed        = 1000,
-  clip_ci_q           = 0.975,
-  x_ticks_n           = 4
-)
-print(m1$metrics)
-print(m1$plot)
-summary(m1$fit_curve); summary(m1$fit_points)
+# min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")),
+#                 na.rm = TRUE)
+# min_year
+# max_year <- max(as.numeric(format(combined_date$month[combined_date$shark_observations > 0 & combined_date$year_observed < 2026], "%Y")),
+#                 na.rm = TRUE)
+# max_year
+# yrs <- seq(min_year, max_year)
+# yrs
+# m1 <- fit_shark_trend2(
+#   combined_date,
+#   effort_offset_col   = "total_observations",   # or "total_users"
+#   start_when_first_obs= FALSE,
+#   # drop_years = c(2025),
+#   years_keep          = yrs,
+#   weight_strategy     = "none",
+#   season_type         = "harmonic",
+#   trend_type          = "linear",
+#   trend_scale         = "std",             # or "std"
+#   k_year              = 12,
+#   average_months      = TRUE,
+#   effort_fixed        = 1000,
+#   clip_ci_q           = 0.975,
+#   x_ticks_n           = 4
+# )
+# print(m1$metrics)
+# print(m1$plot)
+# summary(m1$fit_curve); summary(m1$fit_points)
+# 
+# df <- m1$pred_ts %>% arrange(year_observed)
+# 
+# delta_spue <- df$spue_hat[nrow(df)] - df$spue_hat[1]
+# delta_spue
+# 
+# print(m1$pred_ts, n = Inf)

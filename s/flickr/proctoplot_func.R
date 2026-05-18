@@ -293,6 +293,12 @@ flickr_case_study_plots <- function(
     #   clip_ci_q           = 0.975,
     #   x_ticks_n           = 4
     # )
+    
+    combined_date <- combined_date %>%
+      group_by(year_observed) %>%
+      filter(sum(shark_observations) >= 1) %>%
+      ungroup()
+    
     min_year <- min(as.numeric(format(combined_date$month[combined_date$shark_observations > 0], "%Y")),
                     na.rm = TRUE)
     min_year
@@ -302,7 +308,9 @@ flickr_case_study_plots <- function(
     yrs <- seq(min_year, max_year)
     yrs
     
-    m1 <- run_glm_pipeline(clip_ci_q = 0.975,
+    if (sp == "Sphyrna lewini") {yrs = seq(2004, max_year)}
+    
+    m1 <- run_glm_pipeline(clip_ci_q = 0.945,
                            combined_date %>%
                              filter(year_observed %in% yrs)
     )
@@ -551,7 +559,7 @@ p_hawaii
 
 ggsave("./figures/Hawaii_flickr_plots.pdf", plot = p_hawaii, width = 19, height = 11)
 ggsave(
-  "../../figures/Hawaii_flickr_plots.png",
+  "../../figures/Hawaii_flickr_plots_ind.png",
   plot = p_hawaii,
   width = 20,
   height = 11.5,
@@ -572,7 +580,7 @@ bahamas_species_vec <- c(
   "Galeocerdo cuvier",
   "Ginglymostoma cirratum",
   # "Carcharodon carcharias",
-  "Triaenodon obesus",
+  "Sphyrna lewini",
   "Rhincodon typus",
   "Carcharhinus perezii",
   # "Carcharhinus amblyrhynchos",
@@ -596,7 +604,7 @@ p_bahamas
 
 ggsave("./figures/Bahamas_flickr_plots.pdf", plot = p_bahamas, width = 19, height = 11)
 ggsave(
-  "../../figures/Bahamas_flickr_plots.png",
+  "../../figures/Bahamas_flickr_plots_ind.png",
   plot = p_bahamas,
   width = 20,
   height = 11.5,
@@ -632,7 +640,7 @@ p_maldives <- flickr_case_study_plots(
 
 ggsave("../../figures/Maldives_flickr_plots.pdf", plot = p_maldives, width = 19, height = 11)
 ggsave(
-  "../../figures/Maldives_flickr_plots.png",
+  "../../figures/Maldives_flickr_plots_ind.png",
   plot = p_maldives,
   width = 20,
   height = 11.5,
